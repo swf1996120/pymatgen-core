@@ -288,7 +288,7 @@ class Slab(Structure):
         Returns:
             A copy of the Structure, with optionally new site_properties
         """
-        props = self.site_properties
+        props = copy.deepcopy(self.site_properties)
         if site_properties:
             props.update(site_properties)
 
@@ -297,9 +297,9 @@ class Slab(Structure):
             self.species_and_occu,
             self.frac_coords,
             self.miller_index,
-            self.oriented_unit_cell,
+            copy.deepcopy(self.oriented_unit_cell),
             self.shift,
-            self.scale_factor,
+            np.array(self.scale_factor, copy=True),
             site_properties=props,
             reorient_lattice=self.reorient_lattice,
             reconstruction=self.reconstruction,
