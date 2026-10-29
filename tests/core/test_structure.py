@@ -288,6 +288,16 @@ class TestIStructure(MatSciTest):
             "Se",
         ]
 
+        source = Structure(
+            self.lattice,
+            ["O", "Li"],
+            coords,
+            properties={"metadata": {"tags": ["source"]}},
+        )
+        sorted_copy = source.get_sorted_structure()
+        sorted_copy.properties["metadata"]["tags"].append("sorted")
+        assert source.properties == {"metadata": {"tags": ["source"]}}
+
     def test_get_space_group_data(self):
         assert self.struct.get_space_group_info() == ("Fd-3m", 227)
 
@@ -438,6 +448,20 @@ class TestIStructure(MatSciTest):
         assert new_struct.volume == approx(struct.volume)
         assert new_struct.properties["another_prop"] == "test"
         assert new_struct.properties["test_property"] == "test"
+
+        # Copying general properties must not create a mutable alias to the source.
+        source = Structure(
+            self.lattice,
+            ["Si"],
+            [[0, 0, 0]],
+            properties={"metadata": {"tags": ["source"]}},
+        )
+        copied = source.copy(properties={"copied": True})
+        copied.properties["metadata"]["tags"].append("copy")
+        copied.properties["only_in_copy"] = True
+        assert source.properties == {"metadata": {"tags": ["source"]}}
+        assert "copied" not in source.properties
+        assert "only_in_copy" not in source.properties
 
     def test_interpolate(self):
         coords = [[0, 0, 0], [0.75, 0.5, 0.75]]
@@ -3015,9 +3039,16 @@ Site: H (-0.5134, 0.8892, -0.3630)"""
         assert mol != self.mol
 
     def test_get_centered_molecule(self):
-        mol = IMolecule(["O"] * 2, [[0, 0, 0], [0, 0, 1.2]], spin_multiplicity=3)
+        mol = IMolecule(
+            ["O"] * 2,
+            [[0, 0, 0], [0, 0, 1.2]],
+            spin_multiplicity=3,
+            properties={"metadata": {"tags": ["source"]}},
+        )
         centered = mol.get_centered_molecule()
         assert_allclose(centered.center_of_mass, [0, 0, 0])
+        centered.properties["metadata"]["tags"].append("centered")
+        assert mol.properties == {"metadata": {"tags": ["source"]}}
 
     def test_as_from_dict(self):
         dct = self.mol.as_dict()
@@ -3201,6 +3232,18 @@ class TestMolecule(MatSciTest):
         returned = mol.remove_sites([0, 1])
         assert returned is mol
         assert mol.formula == "H3 N1"
+
+    def test_copy_does_not_alias_properties(self):
+        source = Molecule(
+            ["O", "H", "H"],
+            [[0, 0, 0], [1, 0, 0], [-1, 0, 0]],
+            properties={"metadata": {"tags": ["source"]}},
+        )
+        copied = source.copy()
+        copied.properties["metadata"]["tags"].append("copy")
+        copied.properties["only_in_copy"] = True
+        assert source.properties == {"metadata": {"tags": ["source"]}}
+        assert "only_in_copy" not in source.properties
 
     def test_from_sites(self):
         mol = Molecule.from_sites(self.mol)

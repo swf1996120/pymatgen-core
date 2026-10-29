@@ -17,6 +17,7 @@ import sys
 import warnings
 from abc import ABC, abstractmethod
 from collections import defaultdict
+from copy import deepcopy
 from collections.abc import Callable, Iterable, Iterator, MutableSequence, Sequence
 from typing import (
     TYPE_CHECKING,
@@ -2323,7 +2324,7 @@ class IStructure(SiteCollection[PeriodicSite], MSONable):
                 as if each comparison were reversed.
         """
         sites = sorted(self, key=key, reverse=reverse)
-        return type(self).from_sites(sites, charge=self._charge, properties=self.properties)
+        return type(self).from_sites(sites, charge=self._charge, properties=deepcopy(self.properties))
 
     def get_reduced_structure(self, reduction_algo: Literal["niggli", "LLL"] = "niggli") -> Self:
         """Get a reduced structure.
@@ -2385,7 +2386,9 @@ class IStructure(SiteCollection[PeriodicSite], MSONable):
         new_site_props = self.site_properties
         if site_properties:
             new_site_props.update(site_properties)
-        props = self.properties
+        # General structure properties are mutable metadata. Copy them before
+        # applying overrides so copying a structure cannot mutate the source.
+        props = deepcopy(self.properties)
         if properties:
             props.update(properties)
         if not sanitize:
@@ -3406,7 +3409,7 @@ class IMolecule(SiteCollection[Site], MSONable):
         Returns:
             IMolecule
         """
-        return type(self).from_sites(self, properties=self.properties)
+        return type(self).from_sites(self, properties=deepcopy(self.properties))
 
     @classmethod
     def from_sites(
@@ -3798,7 +3801,7 @@ class IMolecule(SiteCollection[Site], MSONable):
             site_properties=self.site_properties,
             charge_spin_check=self._charge_spin_check,
             labels=self.labels,
-            properties=self.properties,
+            properties=deepcopy(self.properties),
         )
 
     def to(self, filename: PathLike = "", fmt: str = "") -> str | None:
